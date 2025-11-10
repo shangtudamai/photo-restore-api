@@ -18,7 +18,7 @@ module.exports = async function (req, res) {
     const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID;
 
     // ✅ 使用国际可访问的域名
-    const API_URL = `https://api.runninghub.ai/v1/workflows/${WORKFLOW_ID}/run`;
+    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/v1/workflows/${WORKFLOW_ID}/run`;
 
     // ✅ 发送请求到 RunningHub
     const response = await fetch(API_URL, {
