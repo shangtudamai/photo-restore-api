@@ -11,8 +11,8 @@ export default async function handler(req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    const RUNNINGHUB_API_KEY = c194f8c634e546cfa8ecf6b23593e737;
-    const WORKFLOW_ID = 963972275496210433;
+    const RUNNINGHUB_API_KEY = process.env.RUNNINGHUB_API_KEY;
+    const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID;
     const API_URL = `https://api.runninghub.com/v1/workflows/${WORKFLOW_ID}/run`;
 
     const response = await fetch(API_URL, {
