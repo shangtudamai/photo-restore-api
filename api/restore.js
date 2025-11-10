@@ -1,6 +1,6 @@
 // /api/restore.js
 module.exports = async function (req, res) {
-  // ✅ CORS 设置：允许扣子空间前端访问
+  // ✅ CORS 头（允许扣子空间前端调用）
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,41 +13,38 @@ module.exports = async function (req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // ✅ 环境变量读取（同时可直接内嵌以防止 undefined）
+    // ✅ 环境变量或默认值
     const RUNNINGHUB_API_KEY = process.env.RUNNINGHUB_API_KEY || 'c194f8c634e546cfa8ecf6b23593e737';
     const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID || '1963972275496210433';
 
-    // ✅ 通过 Cloudflare Worker 转发
-    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/proxy/${RUNNINGHUB_API_KEY}/v1/workflows/${WORKFLOW_ID}/run`;
+    // ✅ 国内 RunningHub API 地址
+    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/enterprise-api/consumerApi/${RUNNINGHUB_API_KEY}/workflow/${WORKFLOW_ID}/run`;
 
-    console.log("🚀 调用 RunningHub API:", API_URL);
+    console.log("🚀 调用 RunningHub 中国节点 API:", API_URL);
 
-    // ✅ 构造请求体
+    // ✅ 请求体
     const payload = { inputs: { image } };
 
-    // ✅ 发起请求
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RUNNINGHUB_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     const text = await response.text();
-    console.log("🧩 RunningHub 原始返回内容：", text);
+    console.log("🧩 RunningHub 原始返回：", text);
 
-    // ✅ 尝试解析 JSON
     let result;
     try {
       result = JSON.parse(text);
-    } catch (err) {
-      console.error('⚠️ RunningHub 返回非 JSON：', text);
+    } catch {
+      console.error('⚠️ 返回非 JSON：', text);
       throw new Error('RunningHub 返回无效响应');
     }
 
-    // ✅ RunningHub 错误检测
+    // ✅ RunningHub 错误处理
     if (!response.ok || result.code === 404) {
       console.error('⚠️ RunningHub 出错：', result);
       return res.status(500).json({
@@ -56,7 +53,7 @@ module.exports = async function (req, res) {
       });
     }
 
-    // ✅ 尝试提取图片链接（兼容多种结构）
+    // ✅ 提取返回图片链接
     const possibleFields = [
       result.output_url,
       result.outputs?.image,
