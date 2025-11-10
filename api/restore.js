@@ -1,58 +1,45 @@
-module.exports = async function (req, res) {
-  // ✅ 允许跨域访问（CORS）
+// /api/restore.js
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ 处理预检请求
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // ✅ 限制仅允许 POST 请求
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
   try {
     const { image } = req.body;
-    if (!image) {
-      return res.status(400).json({ error: 'No image provided' });
-    }
+    if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // ✅ 调用 RunningHub 接口
-    const runResponse = await fetch('https://api.runninghub.ai/v1/images/generate', {
+    const RUNNINGHUB_API_KEY = c194f8c634e546cfa8ecf6b23593e737;
+    const WORKFLOW_ID = 963972275496210433;
+    const API_URL = `https://api.runninghub.com/v1/workflows/${WORKFLOW_ID}/run`;
+
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RUNNINGHUB_API_KEY}`,
+        'Authorization': `Bearer ${RUNNINGHUB_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'restore-photo',
-        prompt: 'restore this old photo with high fidelity',
-        image,
+        inputs: { image },
       }),
     });
 
-    const text = await runResponse.text();
-    let result;
-    try {
-      result = JSON.parse(text);
-    } catch {
-      console.error('RunningHub 返回非 JSON:', text);
-      throw new Error('RunningHub 返回无效数据');
-    }
+    const result = await response.json();
 
-    if (!runResponse.ok) {
-      console.error('RunningHub 出错:', result);
-      return res.status(500).json({ error: result.error || 'RunningHub API 调用失败' });
+    if (result.error) {
+      console.error('RunningHub Error:', result.error);
+      return res.status(500).json({ error: result.error });
     }
 
     return res.status(200).json({
-      output_url: result.data?.[0]?.url || null,
+      output_url: result.output_url || result.outputs?.image || null,
+      raw: result
     });
+
   } catch (err) {
     console.error('Server Error:', err);
     return res.status(500).json({ error: err.message || 'Internal Server Error' });
   }
-};
+}
