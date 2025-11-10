@@ -1,11 +1,11 @@
 // /api/restore.js
 module.exports = async function (req, res) {
-  // ✅ 允许跨域访问（扣子空间 / 本地测试都能请求）
+  // ✅ CORS 设置：允许扣子空间前端访问
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ 预检请求直接返回
+  // ✅ 处理预检请求
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
@@ -13,19 +13,19 @@ module.exports = async function (req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // ✅ 从 Vercel 环境变量读取
-    const RUNNINGHUB_API_KEY = process.env.RUNNINGHUB_API_KEY;
-    const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID;
+    // ✅ 环境变量读取（同时可直接内嵌以防止 undefined）
+    const RUNNINGHUB_API_KEY = process.env.RUNNINGHUB_API_KEY || 'c194f8c634e546cfa8ecf6b23593e737';
+    const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID || '1963972275496210433';
 
-    // ✅ Cloudflare Worker 代理地址（你的 Worker）
-    const WORKER_PROXY = 'https://weathered-bar-597f.topphoto8888.workers.dev';
-    const API_URL = `${WORKER_PROXY}/v1/workflows/${WORKFLOW_ID}/run`;
+    // ✅ 通过 Cloudflare Worker 转发
+    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/proxy/${RUNNINGHUB_API_KEY}/v1/workflows/${WORKFLOW_ID}/run`;
 
     console.log("🚀 调用 RunningHub API:", API_URL);
 
-    // ✅ 发送请求到 RunningHub（经 Cloudflare Worker 中转）
+    // ✅ 构造请求体
     const payload = { inputs: { image } };
 
+    // ✅ 发起请求
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -38,6 +38,7 @@ module.exports = async function (req, res) {
     const text = await response.text();
     console.log("🧩 RunningHub 原始返回内容：", text);
 
+    // ✅ 尝试解析 JSON
     let result;
     try {
       result = JSON.parse(text);
@@ -46,15 +47,16 @@ module.exports = async function (req, res) {
       throw new Error('RunningHub 返回无效响应');
     }
 
-    if (!response.ok) {
+    // ✅ RunningHub 错误检测
+    if (!response.ok || result.code === 404) {
       console.error('⚠️ RunningHub 出错：', result);
       return res.status(500).json({
-        error: result.error || 'RunningHub API 调用失败',
+        error: result.msg || 'RunningHub API 调用失败',
         detail: result,
       });
     }
 
-    // ✅ 尝试多种常见结构提取图像链接
+    // ✅ 尝试提取图片链接（兼容多种结构）
     const possibleFields = [
       result.output_url,
       result.outputs?.image,
@@ -62,13 +64,11 @@ module.exports = async function (req, res) {
       result.data?.[0]?.url,
       result.data?.[0]?.image,
       result.images?.[0],
-      result?.result?.url,
-      result?.url,
+      result.result?.url,
+      result.url,
     ];
 
-    const imageUrl = possibleFields.find(
-      (v) => typeof v === "string" && v.startsWith("http")
-    );
+    const imageUrl = possibleFields.find(v => typeof v === 'string' && v.startsWith('http'));
 
     if (!imageUrl) {
       console.error("⚠️ 未检测到图片链接字段。完整返回：", result);
@@ -79,7 +79,6 @@ module.exports = async function (req, res) {
       });
     }
 
-    // ✅ 成功返回结果
     console.log("✅ 成功提取图像链接：", imageUrl);
     return res.status(200).json({
       success: true,
