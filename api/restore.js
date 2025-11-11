@@ -12,17 +12,27 @@ module.exports = async function (req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // ✅ 你的 Cloudflare Worker 地址
-    const WORKER_URL = 'https://weathered-bar-597f.topphoto8888.workers.dev';
+    // ✅ RunningHub 企业 API 地址
+    const API_URL = 'https://www.runninghub.cn/enterprise-api/consumerApi/runWorkflow';
 
-    console.log('🚀 向 Worker 转发请求...');
+    // ✅ 固定参数
+    const WORKFLOW_ID = '1963972275496210433';
+    const API_KEY = '01636845dc98444882a6cac2680d65cb';
 
-    const response = await fetch(WORKER_URL, {
+    console.log('🚀 调用 RunningHub 企业 API...');
+
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ image }),
+      body: JSON.stringify({
+        workflowId: WORKFLOW_ID,
+        apiKey: API_KEY,
+        inputs: {
+          image, // base64 图像
+        },
+      }),
     });
 
     const text = await response.text();
@@ -30,20 +40,19 @@ module.exports = async function (req, res) {
     try {
       result = JSON.parse(text);
     } catch {
-      console.error('⚠️ Worker 返回非 JSON:', text);
-      throw new Error('Worker 返回无效响应');
+      console.error('⚠️ RunningHub 返回非 JSON：', text);
+      throw new Error('RunningHub 返回无效响应');
     }
 
-    if (!response.ok || result.error || result.code === 404) {
-      console.error('⚠️ Worker 出错:', result);
-      return res.status(500).json({ error: result.error || result.msg || 'Worker API 调用失败' });
+    if (result.code !== 200) {
+      console.error('⚠️ RunningHub 错误：', result);
+      return res.status(500).json({ error: result.msg || '调用失败' });
     }
 
-    console.log('✅ Worker 成功响应:', result);
+    console.log('✅ 成功返回：', result);
 
-    // ✅ 如果 RunningHub 返回图片结果
     return res.status(200).json({
-      output_url: result.data?.output_url || result.data?.image || null,
+      output_url: result.data?.output_url || null,
       raw: result,
     });
   } catch (err) {
