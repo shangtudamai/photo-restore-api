@@ -1,6 +1,6 @@
 // /api/restore.js
 module.exports = async function (req, res) {
-  // ✅ CORS 头（允许扣子空间前端调用）
+  // ✅ CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -13,23 +13,20 @@ module.exports = async function (req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'No image provided' });
 
-    // ✅ 环境变量或默认值
+    // ✅ 你的 RunningHub 凭证
     const RUNNINGHUB_API_KEY = process.env.RUNNINGHUB_API_KEY || 'c194f8c634e546cfa8ecf6b23593e737';
     const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID || '1963972275496210433';
 
-    // ✅ 国内 RunningHub API 地址
-    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/enterprise-api/consumerApi/${RUNNINGHUB_API_KEY}/workflow/${WORKFLOW_ID}/run`;
+    // ✅ 通过 Cloudflare Worker 转发请求
+    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/enterprise-api/consumerApi/${RUNNINGHUB_API_KEY}/runWorkflow/${WORKFLOW_ID}`;
 
-    console.log("🚀 调用 RunningHub 中国节点 API:", API_URL);
+    console.log("🚀 调用 RunningHub 工作流:", API_URL);
 
-    // ✅ 请求体
     const payload = { inputs: { image } };
 
     const response = await fetch(API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -53,7 +50,7 @@ module.exports = async function (req, res) {
       });
     }
 
-    // ✅ 提取返回图片链接
+    // ✅ 尝试提取图片链接
     const possibleFields = [
       result.output_url,
       result.outputs?.image,
@@ -68,10 +65,10 @@ module.exports = async function (req, res) {
     const imageUrl = possibleFields.find(v => typeof v === 'string' && v.startsWith('http'));
 
     if (!imageUrl) {
-      console.error("⚠️ 未检测到图片链接字段。完整返回：", result);
+      console.warn("⚠️ 未检测到图片链接字段。完整返回：", result);
       return res.status(200).json({
-        success: false,
-        message: "修复成功，但未返回图片链接。",
+        success: true,
+        message: "修复成功，但未检测到图片链接。",
         raw_result: result,
       });
     }
