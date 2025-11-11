@@ -18,7 +18,7 @@ module.exports = async function (req, res) {
     const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID;
 
     // ✅ 企业级 RunningHub API 地址
-    const API_URL = `https://www.runninghub.cn/enterprise-api/enterpriseApi/${API_KEY}/runWorkflow/${WORKFLOW_ID}`;
+    const API_URL = `https://www.runninghub.cn/enterprise-api/consumerApi/${apiKey}/runWorkflow/${workflowId}`;
 
     console.log("📡 [RunningHub] 调用 URL：", API_URL);
 
