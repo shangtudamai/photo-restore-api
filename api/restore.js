@@ -18,7 +18,7 @@ module.exports = async function (req, res) {
     const WORKFLOW_ID = process.env.RUNNINGHUB_WORKFLOW_ID || '1963972275496210433';
 
     // ✅ 通过 Cloudflare Worker 转发请求
-    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/enterprise-api/consumerApi/${RUNNINGHUB_API_KEY}/runWorkflow/${WORKFLOW_ID}`;
+    const API_URL = `https://weathered-bar-597f.topphoto8888.workers.dev/v1/restore`;
 
     console.log("🚀 调用 RunningHub 工作流:", API_URL);
 
